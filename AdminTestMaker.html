@@ -480,14 +480,20 @@
       $('addQuestionBtn').style.display = 'inline-block';
       editingQuestionIndex = null;
 
-      // wire up image input preview
-      $('imageFileInput').onchange = () => {
-        if(imageObjectURL){ URL.revokeObjectURL(imageObjectURL); imageObjectURL = null; }
-        const f = $('imageFileInput').files[0];
-        if(!f) { $('imagePreviewArea').innerHTML=''; return; }
-        const url = URL.createObjectURL(f); imageObjectURL = url;
-        $('imagePreviewArea').innerHTML = `<img src="${url}" style="max-width:140px;max-height:100px;border-radius:8px;border:1px solid #e6e9ef;cursor:pointer" onclick="openImageModal('${url}')">`;
-      };
+     // wire up image input preview and save as base64 string
+$('imageFileInput').onchange = () => {
+  const f = $('imageFileInput').files[0];
+  if(!f) { $('imagePreviewArea').innerHTML=''; imageObjectURL = null; return; }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64 = e.target.result; // Base64 string
+    imageObjectURL = base64;
+    $('imagePreviewArea').innerHTML = `<img src="${base64}" style="max-width:140px;max-height:100px;border-radius:8px;border:1px solid #e6e9ef;cursor:pointer" onclick="openImageModal('${base64}')">`;
+  };
+  reader.readAsDataURL(f);
+};
+
     }
 
     /* ===== Fixed addOptionRow - create elements programmatically
@@ -573,34 +579,30 @@
       });
     }
 
-    // ---------- Create / Update Question ----------
-    function createQuestionFromEditor(){
-      if(currentIndex === null || selectedSectionIndex === null){ alert('Select a test and section'); return false; }
-      const text = $('questionText').value.trim(); if(!text){ alert('Question text required'); return false; }
-      const opts = Array.from(document.querySelectorAll('.option-input')).map(i=>i.value.trim());
-      if(opts.length < 2){ alert('At least two options required'); return false; }
-      if(opts.some(o=>o==='')){ alert('All option fields must be filled'); return false; }
-      const correct = parseInt($('correctSelect').value);
-      const fileInput = $('imageFileInput'); let image = null;
-      if(fileInput.files[0]) { image = URL.createObjectURL(fileInput.files[0]); }
-      const q = { id: uid(), text, options: opts, correctAnswerIndex: correct, image };
-      tests[currentIndex].sections[selectedSectionIndex].questions.push(q);
-      return true;
-    }
+    // When creating/updating question, save imageObjectURL instead of ObjectURL
+function createQuestionFromEditor(){
+  if(currentIndex === null || selectedSectionIndex === null){ alert('Select a test and section'); return false; }
+  const text = $('questionText').value.trim(); if(!text){ alert('Question text required'); return false; }
+  const opts = Array.from(document.querySelectorAll('.option-input')).map(i=>i.value.trim());
+  if(opts.length < 2){ alert('At least two options required'); return false; }
+  if(opts.some(o=>o==='')){ alert('All option fields must be filled'); return false; }
+  const correct = parseInt($('correctSelect').value);
+  const q = { id: uid(), text, options: opts, correctAnswerIndex: correct, image: imageObjectURL || null };
+  tests[currentIndex].sections[selectedSectionIndex].questions.push(q);
+  return true;
+}
 
-    function updateExistingQuestion(){
-      if(editingQuestionIndex === null) return false;
-      const text = $('questionText').value.trim(); if(!text){ alert('Question text required'); return false; }
-      const opts = Array.from(document.querySelectorAll('.option-input')).map(i=>i.value.trim());
-      if(opts.length < 2){ alert('At least two options required'); return false; }
-      if(opts.some(o=>o==='')){ alert('All option fields must be filled'); return false; }
-      const correct = parseInt($('correctSelect').value);
-      const fileInput = $('imageFileInput'); let image = null;
-      if(fileInput.files[0]) { image = URL.createObjectURL(fileInput.files[0]); }
-      const q = tests[currentIndex].sections[selectedSectionIndex].questions[editingQuestionIndex];
-      q.text = text; q.options = opts; q.correctAnswerIndex = correct; q.image = image;
-      return true;
-    }
+function updateExistingQuestion(){
+  if(editingQuestionIndex === null) return false;
+  const text = $('questionText').value.trim(); if(!text){ alert('Question text required'); return false; }
+  const opts = Array.from(document.querySelectorAll('.option-input')).map(i=>i.value.trim());
+  if(opts.length < 2){ alert('At least two options required'); return false; }
+  if(opts.some(o=>o==='')){ alert('All option fields must be filled'); return false; }
+  const correct = parseInt($('correctSelect').value);
+  const q = tests[currentIndex].sections[selectedSectionIndex].questions[editingQuestionIndex];
+  q.text = text; q.options = opts; q.correctAnswerIndex = correct; q.image = imageObjectURL || q.image;
+  return true;
+}
 
     function clearQuestionEditor(){
       editingQuestionIndex = null;
