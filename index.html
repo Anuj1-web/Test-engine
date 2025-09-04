@@ -7,41 +7,233 @@
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.3.2/dist/tailwind.min.css" rel="stylesheet">
   <style>
-    body { margin: 0; font-family: 'Inter', sans-serif; background: #f0f0f0; }
-    .btn { background:black; color:white; padding:10px 20px; border:none; border-radius:6px; cursor:pointer; font-weight:bold; margin:5px;}
-    .btn:hover { background:#333; }
-    .container { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; }
+    body { margin:0; font-family:'Inter',sans-serif; background:#f0f0f0; }
+    button:focus { outline:none; }
+    .card { background:white; padding:20px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1); }
+    img.question-img { max-width:200px; max-height:150px; cursor:pointer; border-radius:6px; margin-top:8px; }
+    .modal-img { position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:1000; }
+    .modal-img img { max-width:90%; max-height:90%; border-radius:10px; }
   </style>
 </head>
 <body>
-  <div id="root"></div>
+<div id="root"></div>
 
-  <script type="text/babel">
-    const { useState } = React;
+<script type="text/babel">
+  const { useState, useEffect, createContext, useContext } = React;
 
-    // Lazy load components from GitHub (replace with your raw github links)
-    const AdminTestMaker = React.lazy(() => import('https://raw.githubusercontent.com/<your-username>/<repo>/main/src/admin/AdminTestMaker.jsx'));
-    const UserTestRunner = React.lazy(() => import('https://raw.githubusercontent.com/<your-username>/<repo>/main/src/user/UserTestRunner.jsx'));
+  // ---------- LocalStorage helper ----------
+  const loadTests = () => JSON.parse(localStorage.getItem("tests") || "[]");
+  const saveTests = (tests) => localStorage.setItem("tests", JSON.stringify(tests));
 
-    function App() {
-      const [page, setPage] = useState("home"); // "home", "admin", "user"
+  // ---------- Context ----------
+  const TestContext = createContext();
 
-      if(page === "admin") return <React.Suspense fallback={<div>Loading Admin Panel...</div>}><AdminTestMaker /></React.Suspense>;
-      if(page === "user") return <React.Suspense fallback={<div>Loading User Page...</div>}><UserTestRunner /></React.Suspense>;
+  const TestProvider = ({children})=>{
+    const [tests, setTests] = useState(loadTests());
+    const [currentTestIndex, setCurrentTestIndex] = useState(null);
+    const [currentSection, setCurrentSection] = useState(0);
+    const [currentQuestion, setCurrentQuestion] = useState(0);
+    const [answers, setAnswers] = useState({});
+    const [timeLeft, setTimeLeft] = useState(null);
+    const [submitted, setSubmitted] = useState(false);
+    const [darkMode, setDarkMode] = useState(false);
+    const [modalImage, setModalImage] = useState(null);
 
+    useEffect(()=>saveTests(tests),[tests]);
+
+    // Timer
+    useEffect(()=>{
+      if(timeLeft===null || submitted) return;
+      if(timeLeft<=0){ setSubmitted(true); return;}
+      const t=setTimeout(()=>setTimeLeft(timeLeft-1),1000);
+      return ()=>clearTimeout(t);
+    },[timeLeft,submitted]);
+
+    const startTest = (index)=>{
+      setCurrentTestIndex(index);
+      setCurrentSection(0);
+      setCurrentQuestion(0);
+      setAnswers({});
+      setSubmitted(false);
+      setTimeLeft(tests[index].duration);
+    };
+
+    const selectAnswer = (questionId,opt)=>{if(submitted) return; setAnswers({...answers,[questionId]:opt});};
+    const submitTest = ()=>setSubmitted(true);
+    const reattempt = ()=>{
+      if(currentTestIndex===null) return;
+      setAnswers({}); setSubmitted(false); setTimeLeft(tests[currentTestIndex].duration); setCurrentSection(0); setCurrentQuestion(0);
+    };
+
+    return <TestContext.Provider value={{
+      tests, setTests,
+      currentTestIndex, setCurrentTestIndex,
+      currentSection, setCurrentSection,
+      currentQuestion, setCurrentQuestion,
+      answers, selectAnswer,
+      timeLeft, startTest,
+      submitted, submitTest, reattempt,
+      darkMode, setDarkMode,
+      modalImage, setModalImage
+    }}>{children}</TestContext.Provider>
+  }
+
+  // ---------- Admin Test Maker ----------
+  const AdminTestMaker = ({goHome})=>{
+    const {tests,setTests,currentTestIndex,setCurrentTestIndex} = useContext(TestContext);
+    const [testTitle,setTestTitle] = useState("");
+    const [testDuration,setTestDuration] = useState(300);
+    const [sectionTitle,setSectionTitle] = useState("");
+    const [selectedSection,setSelectedSection] = useState(0);
+    const [questionText,setQuestionText] = useState("");
+    const [options,setOptions] = useState(["",""]);
+    const [correctAnswerIndex,setCorrectAnswerIndex] = useState(0);
+    const [imageFile,setImageFile] = useState(null);
+
+    const createTest = ()=>{
+      if(!testTitle) return alert("Enter test title");
+      const newTests = [...tests,{title:testTitle,duration:testDuration,sections:[]}];
+      setTests(newTests);
+      setCurrentTestIndex(newTests.length-1);
+      setTestTitle("");
+    };
+
+    const addSection = ()=>{
+      if(!sectionTitle) return alert("Enter section title");
+      const copy=[...tests];
+      copy[currentTestIndex].sections.push({title:sectionTitle,questions:[]});
+      setTests(copy);
+      setSectionTitle("");
+      setSelectedSection(copy[currentTestIndex].sections.length-1);
+    };
+
+    const addQuestion = ()=>{
+      if(!questionText || options.some(o=>!o)) return alert("Enter question and options");
+      const copy=[...tests];
+      const q={id:Date.now(),text:questionText,options,correctAnswerIndex,image:imageFile?URL.createObjectURL(imageFile):null};
+      copy[currentTestIndex].sections[selectedSection].questions.push(q);
+      setTests(copy);
+      setQuestionText(""); setOptions(["",""]); setCorrectAnswerIndex(0); setImageFile(null);
+    };
+
+    return (
+      <div className="p-6 bg-gray-100 min-h-screen">
+        <button className="btn mb-3" onClick={goHome}>Back to Home</button>
+        <div className="card">
+          <h2 className="text-xl font-bold mb-2">Admin Test Maker</h2>
+          <div className="mb-4">
+            <input className="border p-2 mr-2 rounded" placeholder="Test Title" value={testTitle} onChange={e=>setTestTitle(e.target.value)} />
+            <input type="number" className="border p-2 mr-2 rounded" placeholder="Duration(sec)" value={testDuration} onChange={e=>setTestDuration(Number(e.target.value))} />
+            <button className="btn" onClick={createTest}>Create Test</button>
+          </div>
+          {currentTestIndex!==null && <>
+            <div className="mb-4">
+              <input className="border p-2 mr-2 rounded" placeholder="Section Title" value={sectionTitle} onChange={e=>setSectionTitle(e.target.value)} />
+              <button className="btn" onClick={addSection}>Add Section</button>
+            </div>
+            {tests[currentTestIndex].sections.length>0 && <>
+              <select className="border p-2 rounded mb-2" value={selectedSection} onChange={e=>setSelectedSection(Number(e.target.value))}>
+                {tests[currentTestIndex].sections.map((s,idx)=><option key={idx} value={idx}>{s.title}</option>)}
+              </select>
+              <input className="border p-2 rounded mb-2 w-full" placeholder="Question Text" value={questionText} onChange={e=>setQuestionText(e.target.value)} />
+              {options.map((o,i)=><div key={i} className="flex mb-1">
+                <input className="border p-2 flex-1" value={o} onChange={e=>{const n=[...options];n[i]=e.target.value;setOptions(n)}} />
+                <button className="btn ml-1" onClick={()=>setOptions(options.filter((_,idx)=>idx!==i))}>X</button>
+              </div>)}
+              <button className="btn mb-2" onClick={()=>setOptions([...options,""])}>Add Option</button>
+              <div className="mb-2">
+                <label className="mr-2">Correct Answer:</label>
+                <select className="border p-2 rounded" value={correctAnswerIndex} onChange={e=>setCorrectAnswerIndex(Number(e.target.value))}>
+                  {options.map((_,i)=><option key={i} value={i}>Option {i+1}</option>)}
+                </select>
+              </div>
+              <div className="mb-2">
+                <label className="mr-2">Image(optional):</label>
+                <input type="file" onChange={e=>setImageFile(e.target.files[0])} />
+              </div>
+              <button className="btn" onClick={addQuestion}>Add Question</button>
+            </>}
+          </>}
+        </div>
+      </div>
+    )
+  }
+
+  // ---------- User Test Runner ----------
+  const UserTestRunner = ({goHome})=>{
+    const {tests,currentTestIndex,setCurrentTestIndex,currentSection,setCurrentSection,currentQuestion,setCurrentQuestion,
+           answers,selectAnswer,timeLeft,startTest,submitted,submitTest,reattempt,darkMode,setDarkMode,modalImage,setModalImage} = useContext(TestContext);
+
+    const [selectedTestIndex,setSelectedTestIndex] = useState(null);
+
+    if(selectedTestIndex===null){
       return (
-        <div className="container">
-          <h1 style={{fontSize:"2rem", marginBottom:"20px"}}>Dynamic Test Platform</h1>
-          <div>
+        <div className="p-6 bg-gray-100 min-h-screen">
+          <button className="btn mb-3" onClick={goHome}>Back to Home</button>
+          <h2 className="text-xl font-bold mb-2">Select Test</h2>
+          {tests.length===0 && <p>No tests available</p>}
+          {tests.map((t,idx)=><button key={idx} className="btn mb-2 block" onClick={()=>setSelectedTestIndex(idx)}>{t.title}</button>)}
+        </div>
+      )
+    }
+
+    const test = tests[selectedTestIndex];
+    const section = test.sections[currentSection];
+    const question = section.questions[currentQuestion];
+
+    if(!question) return <div className="p-6">No questions in this section</div>;
+
+    return (
+      <div className="p-6 bg-gray-100 min-h-screen">
+        <button className="btn mb-3" onClick={goHome}>Back to Home</button>
+        <div className="card p-4">
+          <h2 className="text-lg font-bold">{test.title} - {section.title}</h2>
+          <p className="my-2">Time Left: {Math.floor(timeLeft/60).toString().padStart(2,'0')}:{(timeLeft%60).toString().padStart(2,'0')}</p>
+          <h3 className="font-semibold my-2">{question.text}</h3>
+          {question.image && <img className="question-img" src={question.image} onClick={()=>setModalImage(question.image)} />}
+          <div className="grid gap-2 my-2">
+            {question.options.map((opt,i)=>{
+              let bg="bg-gray-700";
+              if(answers[question.id]===i) bg = submitted ? (i===question.correctAnswerIndex ? "bg-green-500":"bg-red-500"):"bg-blue-500";
+              return <button key={i} className={`${bg} text-white p-2 rounded text-left`} onClick={()=>selectAnswer(question.id,i)}>{opt}</button>
+            })}
+          </div>
+          <div className="mt-2 flex space-x-2">
+            <button className="btn" onClick={()=>setCurrentQuestion(Math.max(currentQuestion-1,0))}>Previous</button>
+            <button className="btn" onClick={()=>setCurrentQuestion(Math.min(currentQuestion+1,section.questions.length-1))}>Next</button>
+            <button className="btn" onClick={submitTest}>Submit</button>
+            {submitted && <button className="btn" onClick={reattempt}>Reattempt</button>}
+          </div>
+          {submitted && <div className="mt-2 p-2 border-t border-gray-300">
+            <p>Selected: {answers[question.id]!==undefined?question.options[answers[question.id]]:"Not Answered"}, Correct: {question.options[question.correctAnswerIndex]}</p>
+          </div>}
+        </div>
+        {modalImage && <div className="modal-img" onClick={()=>setModalImage(null)}><img src={modalImage}/></div>}
+      </div>
+    )
+  }
+
+  // ---------- App ----------
+  function App(){
+    const [page,setPage]=useState("home");
+    return (
+      <TestProvider>
+        {page==="home" && <div className="flex flex-col items-center justify-center min-h-screen">
+          <h1 className="text-3xl font-bold mb-6">Dynamic Test Platform</h1>
+          <div className="flex space-x-4">
             <button className="btn" onClick={()=>setPage("admin")}>Admin Test Maker</button>
             <button className="btn" onClick={()=>setPage("user")}>User Test Runner</button>
           </div>
-        </div>
-      );
-    }
+        </div>}
+        {page==="admin" && <AdminTestMaker goHome={()=>setPage("home")} />}
+        {page==="user" && <UserTestRunner goHome={()=>setPage("home")} />}
+      </TestProvider>
+    )
+  }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-  </script>
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
 </body>
 </html>
