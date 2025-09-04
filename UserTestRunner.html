@@ -63,7 +63,6 @@ h1,h2,h3,h4,p{margin:0 0 10px 0}
         <button id="submitBtn">Submit</button>
         <button id="reattemptBtn" style="display:none">Reattempt</button>
       </div>
-      <div id="summaryContainer"></div>
     </div>
   </div>
 </div>
@@ -74,7 +73,7 @@ h1,h2,h3,h4,p{margin:0 0 10px 0}
 
 <script>
 let tests = [];
-try{
+try {
   const raw = localStorage.getItem('admin_tests_v1');
   if(raw) tests = JSON.parse(raw);
 } catch(e){console.error('Failed to load tests:', e);}
@@ -91,7 +90,6 @@ const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
 const submitBtn = document.getElementById('submitBtn');
 const reattemptBtn = document.getElementById('reattemptBtn');
-const summaryContainer = document.getElementById('summaryContainer');
 
 let selectedTestIndex = null;
 let currentSectionIndex = 0;
@@ -107,7 +105,10 @@ function renderTestList(){
   tests.forEach((t,i)=>{
     const btn = document.createElement('button');
     btn.className='test-btn';
-    btn.textContent= t.title + ' (' + t.duration + 's)';
+    const mins = Math.floor(t.duration/60);
+    const secs = t.duration % 60;
+    const timeStr = `${mins}m ${secs}s`;
+    btn.textContent= t.title + ' (' + timeStr + ')';
     btn.onclick = ()=>startTest(i);
     testListEl.appendChild(btn);
   });
@@ -121,7 +122,6 @@ function startTest(idx){
   currentQuestionIndex=0;
   answers={};
   submitted=false;
-  summaryContainer.innerHTML='';
   const test = tests[selectedTestIndex];
   timeLeft = test.duration;
   startTimer();
@@ -175,7 +175,6 @@ function renderSidebar(){
 }
 
 function renderQuestion(){
-  summaryContainer.innerHTML='';
   const test = tests[selectedTestIndex];
   const section = test.sections[currentSectionIndex];
   const question = section.questions[currentQuestionIndex];
@@ -183,7 +182,12 @@ function renderQuestion(){
 
   let html=`<div class="question-card">
     <h3>Q${currentQuestionIndex+1}: ${question.text}</h3>`;
-  if(question.image) html+=`<img src="${question.image}" alt="Q Image" onclick="openModal('${question.image}')">`;
+
+  if(question.image){
+    let imgSrc = question.image.startsWith('data:') ? question.image : question.image;
+    html+=`<img src="${imgSrc}" alt="Q Image" onclick="openModal('${imgSrc.replace(/'/g,"\\'")}')">`;
+  }
+
   html+='<div class="options">';
   question.options.forEach((opt,idx)=>{
     let cls='';
@@ -195,7 +199,19 @@ function renderQuestion(){
     }
     html+=`<button class="${cls}" onclick="selectAnswer(${question.id},${idx})">${opt}</button>`;
   });
-  html+='</div></div>';
+  html+='</div>';
+
+  if(submitted){
+    const ansIdx = answers[question.id];
+    const status = ansIdx === question.correctAnswerIndex ? 'Correct' : 'Wrong';
+    html+=`<div class="summary">
+      <p>Your Answer: ${ansIdx!==undefined ? question.options[ansIdx] : 'Not Answered'}</p>
+      <p>Correct Answer: ${question.options[question.correctAnswerIndex]}</p>
+      <p>Status: <strong>${status}</strong></p>
+    </div>`;
+  }
+
+  html+='</div>';
   questionContainer.innerHTML=html;
   renderSidebar();
   updateNavButtons();
@@ -207,14 +223,8 @@ function selectAnswer(qId,optIdx){
   renderQuestion();
 }
 
-function prevQuestion(){
-  if(currentQuestionIndex>0){currentQuestionIndex--;renderQuestion();}
-}
-
-function nextQuestion(){
-  const section = tests[selectedTestIndex].sections[currentSectionIndex];
-  if(currentQuestionIndex<section.questions.length-1){currentQuestionIndex++;renderQuestion();}
-}
+function prevQuestion(){if(currentQuestionIndex>0){currentQuestionIndex--;renderQuestion();}}
+function nextQuestion(){const section = tests[selectedTestIndex].sections[currentSectionIndex]; if(currentQuestionIndex<section.questions.length-1){currentQuestionIndex++;renderQuestion();}}
 
 function updateNavButtons(){
   const section = tests[selectedTestIndex].sections[currentSectionIndex];
@@ -228,29 +238,7 @@ function submitTest(){
   submitted=true;
   clearInterval(timerInterval);
   renderQuestion();
-  renderSummary();
   alert('Test submitted!');
-}
-
-function renderSummary(){
-  const test = tests[selectedTestIndex];
-  let total=0, correct=0;
-  let html=`<div class="summary"><h4>Test Summary: ${test.title}</h4>`;
-  test.sections.forEach((s,si)=>{
-    html+=`<h4>${s.title}</h4>`;
-    s.questions.forEach((q,qi)=>{
-      total++;
-      const ansIdx = answers[q.id];
-      const isCorrect = ansIdx===q.correctAnswerIndex;
-      if(isCorrect) correct++;
-      html+=`<p>Q${qi+1}: ${q.text}<br>
-        Your Answer: ${ansIdx!==undefined?q.options[ansIdx]:'Not Answered'}<br>
-        Correct Answer: ${q.options[q.correctAnswerIndex]}<br>
-        <strong>Status: ${isCorrect?'Correct':'Wrong'}</strong></p>`;
-    });
-  });
-  html+=`<h4>Score: ${correct}/${total} (${Math.round(correct/total*100)}%)</h4></div>`;
-  summaryContainer.innerHTML=html;
 }
 
 function reattemptTest(){
@@ -260,7 +248,6 @@ function reattemptTest(){
   timeLeft=test.duration;
   currentSectionIndex=0;
   currentQuestionIndex=0;
-  summaryContainer.innerHTML='';
   renderSidebar();
   renderQuestion();
   startTimer();
@@ -270,7 +257,6 @@ function openModal(src){
   document.getElementById('modalImage').src=src;
   document.getElementById('modal').style.display='flex';
 }
-
 function closeModal(){document.getElementById('modal').style.display='none'}
 
 prevBtn.onclick=prevQuestion;
