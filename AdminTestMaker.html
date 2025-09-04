@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Admin Test Maker — Full</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    /* ---------- Base ---------- */
+    :root{
+      --bg:#f5f7fb; --panel:#fff; --muted:#6b7280; --accent:#111827; --green:#16a34a; --red:#ef4444;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Segoe UI,Roboto,system-ui,Arial; background:var(--bg); color:var(--accent); -webkit-font-smoothing:antialiased}
+    .container{display:flex;gap:20px;padding:20px;min-height:100vh}
+
+    /* ---------- Panels ---------- */
+    .panel{background:var(--panel);border-radius:12px;box-shadow:0 6px 18px rgba(15,23,42,0.06);padding:18px;display:flex;flex-direction:column}
+    .left{width:360px;min-width:280px;max-width:420px}
+    .right{flex:1;overflow:auto;min-width:0}
+
+    h1{margin:0 0 12px;font-size:20px}
+    h2{margin:0 0 10px;font-size:16px}
+    h3{margin:0 0 8px;font-size:14px}
+    p.small{margin:0;color:var(--muted);font-size:13px}
+
+    /* ---------- Inputs & Buttons ---------- */
+    .row{display:flex;gap:10px;align-items:center}
+    input[type="text"], input[type="number"], select, textarea {
+      width:100%;padding:10px;border:1px solid #e6e9ef;border-radius:8px;font-size:14px;
+    }
+    textarea{min-height:80px;resize:vertical}
+    button{padding:10px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
+    .btn-dark{background:var(--accent);color:white}
+    .btn-ghost{background:transparent;border:1px solid #e6e9ef;color:var(--accent)}
+    .btn-danger{background:var(--red);color:white}
+    .small-btn{padding:6px 8px;font-size:13px;border-radius:6px}
+
+    /* ---------- Test List ---------- */
+    .test-list{display:flex;flex-direction:column;gap:8px;overflow:auto;padding-bottom:6px}
+    .test-item{padding:12px;border-radius:10px;border:1px solid #eef2f6;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+    .test-item.selected{background:#f0f9ff;border-color:#c7f0ff}
+    .test-meta{color:var(--muted);font-size:13px}
+
+    /* ---------- Sections ---------- */
+    .section-list{display:flex;flex-direction:column;gap:8px;max-height:240px;overflow:auto;padding-top:6px}
+    .section-card{padding:10px;border-radius:8px;border:1px solid #eef2f6;cursor:pointer}
+    .section-card.selected{background:#f8fafc;border-color:#e6f0ff}
+
+    /* ---------- Question Editor ---------- */
+    .editor-grid{display:grid;grid-template-columns:1fr 360px;gap:16px}
+    .question-card{border:1px dashed #e8eef6;padding:12px;border-radius:8px;background:#fcfdff}
+    .option-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+    .option-input{flex:1;padding:8px;border:1px solid #e6e9ef;border-radius:8px}
+    .option-actions{display:flex;gap:6px}
+
+    /* ---------- Preview ---------- */
+    .preview{display:flex;flex-direction:column;gap:14px}
+    .preview-question{padding:12px;border-radius:8px;border:1px solid #eef2f6;background:#ffffff}
+    .preview-img{max-width:220px;max-height:160px;object-fit:contain;border-radius:8px;border:1px solid #e6e9ef}
+
+    /* ---------- Footer helpers ---------- */
+    .muted{color:var(--muted);font-size:13px}
+    .flex{display:flex}
+    .gap-6{gap:6px}
+    .stack{display:flex;flex-direction:column;gap:10px}
+    .spacer{flex:1}
+    .hr{height:1px;background:#eef2f6;margin:10px 0;border-radius:2px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+    /* ---------- Modal ---------- */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;z-index:50}
+    .modal-img{max-width:92vw;max-height:92vh;border-radius:10px;box-shadow:0 10px 30px rgba(2,6,23,0.5);background:#fff;padding:6px}
+
+    /* ---------- Responsive ---------- */
+    @media (max-width:980px){
+      .container{flex-direction:column}
+      .left{width:100%}
+      .editor-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- LEFT PANEL: Test list + creation -->
+    <div class="panel left" id="leftPanel">
+      <h1>Admin — Test Maker</h1>
+
+      <div style="margin-bottom:10px">
+        <h3>Existing Tests</h3>
+        <div id="testList" class="test-list"></div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div style="margin-top:10px">
+        <h3>Create / Duplicate</h3>
+        <div style="display:flex;gap:8px;">
+          <input id="newTestTitle" type="text" placeholder="New test title" />
+          <button class="btn-dark small-btn" id="createTestBtn">Create</button>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;">
+          <input id="duplicateIndex" type="number" placeholder="Index to duplicate (optional)" />
+          <button class="btn-ghost small-btn" id="duplicateBtn">Duplicate</button>
+        </div>
+        <p class="muted">Click a test to edit it. Use duplicate to copy structure.</p>
+      </div>
+
+      <div class="hr"></div>
+
+      <div style="margin-top:10px">
+        <h3>Quick Actions</h3>
+        <div class="controls">
+          <button class="btn-ghost small-btn" id="exportAllBtn">Export JSON</button>
+          <button class="btn-ghost small-btn" id="importBtn">Import JSON</button>
+          <input id="importFile" type="file" accept=".json" style="display:none" />
+          <button class="btn-danger small-btn" id="clearAllBtn">Clear All</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT PANEL: Editor / Preview -->
+    <div class="panel right" id="rightPanel">
+      <!-- Header for selected test -->
+      <div id="editorHeader" style="display:none;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div>
+            <h2 id="editingTitle">Editing: —</h2>
+            <div class="muted" id="editingMeta">sections: 0 | duration: 300s</div>
+          </div>
+          <div class="spacer"></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-dark" id="saveBtn">Save</button>
+            <button class="btn-ghost" id="previewBtn">Preview</button>
+            <button class="btn-danger" id="deleteTestBtn">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Editor Body -->
+      <div id="editorBody" style="display:none" class="stack">
+        <div style="display:flex;gap:12px;align-items:center">
+          <div style="width:220px">
+            <label class="muted">Test Title</label>
+            <input id="testTitle" type="text" />
+          </div>
+          <div style="width:160px">
+            <label class="muted">Duration (seconds)</label>
+            <input id="testDuration" type="number" min="10" />
+          </div>
+          <div class="spacer"></div>
+          <div>
+            <label class="muted">Test Index</label>
+            <div style="font-weight:700" id="testIndexLabel">—</div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <!-- Section Manager -->
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <div style="flex:1">
+            <h3>Sections</h3>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+              <input id="sectionTitle" type="text" placeholder="Section title" />
+              <button class="btn-dark small-btn" id="addSectionBtn">Add Section</button>
+            </div>
+            <div id="sectionList" class="section-list"></div>
+          </div>
+
+          <!-- Question Editor -->
+          <div style="width:540px">
+            <h3>Question Editor</h3>
+            <div id="questionEditorArea" class="question-card">
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+                <input id="questionText" type="text" placeholder="Enter question text (placeholder only allowed)" />
+              </div>
+
+              <div id="optionsContainer" style="margin-bottom:8px">
+                <!-- dynamic option rows inserted here -->
+              </div>
+
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+                <button class="btn-ghost small-btn" id="addOptionBtn">+ Option</button>
+                <div class="spacer"></div>
+                <label class="muted">Correct answer:</label>
+                <select id="correctSelect"></select>
+              </div>
+
+              <div style="margin-bottom:8px">
+                <label class="muted">Image (optional)</label><br />
+                <input id="imageFileInput" type="file" accept="image/*" />
+                <div id="imagePreviewArea" style="margin-top:8px"></div>
+              </div>
+
+              <div style="display:flex;gap:8px;align-items:center">
+                <button class="btn-dark" id="addQuestionBtn">Add Question</button>
+                <button class="btn-ghost" id="updateQuestionBtn" style="display:none">Update Question</button>
+                <button class="btn-ghost" id="clearQuestionBtn">Clear</button>
+                <div class="spacer"></div>
+                <div class="muted">You can add/remove options freely.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <!-- Questions overview -->
+        <div>
+          <h3>Questions in Selected Section</h3>
+          <div id="questionsOverview" style="display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto"></div>
+        </div>
+      </div>
+
+      <!-- Preview area -->
+      <div id="previewArea" style="display:none">
+        <h2 id="previewTitle">Preview</h2>
+        <div id="previewContent" class="preview"></div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn-dark" id="exitPreviewBtn">Exit Preview</button>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="emptyState" style="display:block">
+        <p class="muted">No test selected. Create or choose a test on the left to start editing.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for full image -->
+  <div id="imageModal" style="display:none" class="modal-backdrop" onclick="closeImageModal()">
+    <img id="imageModalImg" class="modal-img" src="" />
+  </div>
+
+  <script>
+    /* ==========================
+       Admin Test Maker — Full JS
+       Single-file admin editor
+       ========================== */
+
+    // In-memory store for tests
+    let tests = [];
+    let currentIndex = null;          // index of selected test
+    let selectedSectionIndex = null;  // index of selected section in test
+    let editingQuestionIndex = null;  // index for editing a question, null => add new
+    let imageObjectURL = null;        // preview object URL for image input
+
+    // ---------- Helper utilities ----------
+    const $ = (id) => document.getElementById(id);
+
+    function uid(){ return Date.now() + Math.floor(Math.random()*999); }
+
+    function show(selector){ $(selector).style.display = 'block'; }
+    function hide(selector){ $(selector).style.display = 'none'; }
+
+    function safePush(arr, item){
+      arr.push(item); return arr;
+    }
+
+    function saveTestsToLocal(){
+      try{ localStorage.setItem('admin_tests_v1', JSON.stringify(tests)); } catch(e){}
+    }
+    function loadTestsFromLocal(){
+      try{
+        const raw = localStorage.getItem('admin_tests_v1');
+        if(raw) tests = JSON.parse(raw);
+      }catch(e){}
+    }
+
+    // ---------- Initialization ----------
+    function init(){
+      loadTestsFromLocal();
+      bindUI();
+      renderTestList();
+      renderEditorState();
+    }
+
+    // ---------- UI bindings ----------
+    function bindUI(){
+      $('createTestBtn').addEventListener('click', () => {
+        const title = $('newTestTitle').value.trim();
+        if(!title) { alert('Please provide a test title'); return; }
+        const newTest = { title, duration: 300, sections: [] };
+        tests.push(newTest);
+        currentIndex = tests.length - 1;
+        $('newTestTitle').value = '';
+        saveTestsToLocal();
+        renderTestList();
+        renderEditorState();
+      });
+
+      $('duplicateBtn').addEventListener('click', () => {
+        const idx = parseInt($('duplicateIndex').value);
+        if(isNaN(idx) || idx < 0 || idx >= tests.length){ alert('Invalid index to duplicate'); return; }
+        const copy = JSON.parse(JSON.stringify(tests[idx]));
+        // slightly modify copied title
+        copy.title = copy.title + ' (copy)';
+        tests.push(copy);
+        currentIndex = tests.length - 1;
+        saveTestsToLocal(); renderTestList(); renderEditorState();
+      });
+
+      $('exportAllBtn').addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(tests, null, 2)], {type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download='tests-export.json'; a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      $('importBtn').addEventListener('click', () => $('importFile').click());
+      $('importFile').addEventListener('change', (ev) => {
+        const f = ev.target.files[0]; if(!f) return;
+        const r = new FileReader();
+        r.onload = () => {
+          try{
+            const parsed = JSON.parse(r.result);
+            if(!Array.isArray(parsed)) throw new Error('Invalid format');
+            tests = parsed; saveTestsToLocal(); renderTestList(); renderEditorState();
+            alert('Imported successfully');
+          }catch(e){ alert('Import failed: ' + e.message) }
+        };
+        r.readAsText(f);
+      });
+
+      $('clearAllBtn').addEventListener('click', () => {
+        if(!confirm('Clear all tests? This cannot be undone.')) return;
+        tests = []; currentIndex = null; selectedSectionIndex = null; saveTestsToLocal(); renderTestList(); renderEditorState();
+      });
+
+      // Editor header actions
+      $('saveBtn').addEventListener('click', () => {
+        // Basic save (already live-updates below) — we'll ensure metadata synced
+        syncEditorToModel();
+        saveTestsToLocal();
+        renderTestList();
+        alert('Saved');
+      });
+
+      $('previewBtn').addEventListener('click', () => {
+        if(currentIndex === null) return;
+        $('editorBody').style.display = 'none';
+        $('previewArea').style.display = 'block';
+        $('editorHeader').style.display = 'none';
+        $('emptyState').style.display = 'none';
+        renderPreview();
+      });
+
+      $('exitPreviewBtn').addEventListener('click', () => {
+        $('previewArea').style.display = 'none';
+        $('editorBody').style.display = 'block';
+        $('editorHeader').style.display = 'block';
+      });
+
+      $('deleteTestBtn').addEventListener('click', () => {
+        if(currentIndex === null) return;
+        if(!confirm('Delete this test?')) return;
+        tests.splice(currentIndex,1);
+        currentIndex = null; selectedSectionIndex = null; editingQuestionIndex = null;
+        saveTestsToLocal(); renderTestList(); renderEditorState();
+      });
+
+      // Section add
+      $('addSectionBtn').addEventListener('click', () => {
+        const title = $('sectionTitle').value.trim();
+        if(!title){ alert('Section title required'); return; }
+        if(currentIndex === null){ alert('Select a test first'); return; }
+        const s = { title, questions: [] };
+        tests[currentIndex].sections.push(s);
+        selectedSectionIndex = tests[currentIndex].sections.length -1;
+        $('sectionTitle').value = '';
+        saveTestsToLocal(); renderEditorState();
+      });
+
+      // Question options add / add question / update / clear
+      $('addOptionBtn').addEventListener('click', addOptionRow);
+      $('addQuestionBtn').addEventListener('click', () => {
+        const ok = createQuestionFromEditor();
+        if(ok){ clearQuestionEditor(); saveTestsToLocal(); renderEditorState(); }
+      });
+      $('updateQuestionBtn').addEventListener('click', () => {
+        const ok = updateExistingQuestion();
+        if(ok){ clearQuestionEditor(); saveTestsToLocal(); renderEditorState(); }
+      });
+      $('clearQuestionBtn').addEventListener('click', clearQuestionEditor);
+
+      // Image modal open/close handled inline
+      // When switching selected test/section, renderEditorState() will handle
+    }
+
+    // ---------- Rendering: Test list ----------
+    function renderTestList(){
+      const container = $('testList');
+      container.innerHTML = '';
+      if(tests.length === 0){
+        container.innerHTML = '<div class="muted">No tests yet — create one.</div>';
+        return;
+      }
+      tests.forEach((t, idx) => {
+        const div = document.createElement('div');
+        div.className = 'test-item' + (idx === currentIndex ? ' selected' : '');
+        div.innerHTML = `<div style="flex:1">
+            <div style="font-weight:700">${escapeHtml(t.title)}</div>
+            <div class="muted" style="margin-top:6px">Duration: ${t.duration}s — Sections: ${t.sections.length}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+            <button class="small-btn btn-ghost" onclick="selectTest(event, ${idx})">Edit</button>
+            <button class="small-btn" onclick="duplicateTest(event, ${idx})">Duplicate</button>
+          </div>`;
+        container.appendChild(div);
+      });
+    }
+
+    function selectTest(e, index){
+      e.stopPropagation();
+      currentIndex = index;
+      selectedSectionIndex = (tests[currentIndex].sections.length>0) ? 0 : null;
+      editingQuestionIndex = null;
+      renderEditorState();
+    }
+    function duplicateTest(e, index){
+      e.stopPropagation();
+      const copy = JSON.parse(JSON.stringify(tests[index]));
+      copy.title = copy.title + ' (copy)';
+      tests.push(copy);
+      saveTestsToLocal(); renderTestList();
+      alert('Duplicated. Select the new one to edit.');
+    }
+
+    // ---------- Editor State ----------
+    function renderEditorState(){
+      // header visibility
+      if(currentIndex === null){ $('editorHeader').style.display='none'; $('editorBody').style.display='none'; $('emptyState').style.display='block'; $('previewArea').style.display='none'; return; }
+      $('editorHeader').style.display='block'; $('editorBody').style.display='block'; $('emptyState').style.display='none'; $('previewArea').style.display='none';
+
+      // populate header meta
+      const test = tests[currentIndex];
+      $('editingTitle').innerText = 'Editing: ' + test.title;
+      $('editingMeta').innerText = `sections: ${test.sections.length} | duration: ${test.duration}s`;
+      $('testIndexLabel').innerText = currentIndex;
+
+      // populate main editor inputs
+      $('testTitle').value = test.title;
+      $('testDuration').value = test.duration;
+
+      // set up section list
+      const sl = $('sectionList'); sl.innerHTML = '';
+      test.sections.forEach((s, si) => {
+        const div = document.createElement('div');
+        div.className = 'section-card' + (si === selectedSectionIndex ? ' selected' : '');
+        div.onclick = () => { selectedSectionIndex = si; editingQuestionIndex = null; clearQuestionEditor(); renderEditorState(); };
+        div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
+            <div><strong>${escapeHtml(s.title)}</strong><div class="muted" style="margin-top:6px">${s.questions.length} questions</div></div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <button class="small-btn btn-ghost" onclick="renameSection(event, ${si})">Rename</button>
+              <button class="small-btn btn-danger" onclick="deleteSection(event, ${si})">Delete</button>
+            </div>
+          </div>`;
+        sl.appendChild(div);
+      });
+
+      // question list overview for selected section
+      renderQuestionsOverview();
+
+      // ensure question editor UI reflects state
+      populateQuestionEditorUI();
+    }
+
+    // ---------- Question Editor helpers ----------
+    function populateQuestionEditorUI(){
+      // clear options, prepare two empty fields by default
+      const optsBox = $('optionsContainer'); optsBox.innerHTML = '';
+      addOptionRow(); addOptionRow();
+      updateCorrectSelect();
+      $('imagePreviewArea').innerHTML = '';
+      $('imageFileInput').value = '';
+      $('questionText').value = '';
+      $('updateQuestionBtn').style.display = 'none';
+      $('addQuestionBtn').style.display = 'inline-block';
+      editingQuestionIndex = null;
+
+      // wire up image input preview
+      $('imageFileInput').onchange = () => {
+        if(imageObjectURL){ URL.revokeObjectURL(imageObjectURL); imageObjectURL = null; }
+        const f = $('imageFileInput').files[0];
+        if(!f) { $('imagePreviewArea').innerHTML=''; return; }
+        const url = URL.createObjectURL(f); imageObjectURL = url;
+        $('imagePreviewArea').innerHTML = `<img src="${url}" style="max-width:140px;max-height:100px;border-radius:8px;border:1px solid #e6e9ef;cursor:pointer" onclick="openImageModal('${url}')">`;
+      };
+    }
+
+    /* ===== Fixed addOptionRow - create elements programmatically
+       This avoids accidental rendering of non-string values such as PointerEvent.
+       Always sets placeholder "Option X" and sets input.value="" unless a string is provided.
+    */
+    function addOptionRow(value){
+      const box = $('optionsContainer');
+      const idx = box.querySelectorAll('.option-row').length;
+      const row = document.createElement('div');
+      row.className = 'option-row';
+
+      const input = document.createElement('input');
+      input.className = 'option-input';
+      input.type = 'text';
+      input.placeholder = `Option ${idx+1}`;
+
+      // Only set value if a proper string is provided. Guard against events or objects.
+      if (typeof value === 'string' && value.length > 0) {
+        input.value = value;
+      } else {
+        input.value = '';
+      }
+
+      const actions = document.createElement('div');
+      actions.className = 'option-actions';
+
+      const upBtn = document.createElement('button');
+      upBtn.className = 'small-btn btn-ghost';
+      upBtn.type = 'button';
+      upBtn.textContent = '▲';
+      upBtn.onclick = function(){ moveOptionUp(upBtn); };
+
+      const downBtn = document.createElement('button');
+      downBtn.className = 'small-btn btn-ghost';
+      downBtn.type = 'button';
+      downBtn.textContent = '▼';
+      downBtn.onclick = function(){ moveOptionDown(downBtn); };
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'small-btn btn-danger';
+      delBtn.type = 'button';
+      delBtn.textContent = '✕';
+      delBtn.onclick = function(){ removeOptionRow(delBtn); };
+
+      actions.appendChild(upBtn);
+      actions.appendChild(downBtn);
+      actions.appendChild(delBtn);
+
+      row.appendChild(input);
+      row.appendChild(actions);
+      box.appendChild(row);
+
+      updateCorrectSelect();
+    }
+
+    function removeOptionRow(btn){
+      const row = btn.closest('.option-row');
+      row.remove();
+      updateCorrectSelect();
+    }
+    function moveOptionUp(btn){
+      const row = btn.closest('.option-row');
+      const box = $('optionsContainer');
+      const prev = row.previousElementSibling;
+      if(prev) box.insertBefore(row, prev);
+      updateCorrectSelect();
+    }
+    function moveOptionDown(btn){
+      const row = btn.closest('.option-row');
+      const box = $('optionsContainer');
+      const next = row.nextElementSibling;
+      if(next) box.insertBefore(next, row);
+      updateCorrectSelect();
+    }
+
+    function updateCorrectSelect(){
+      const select = $('correctSelect'); select.innerHTML = '';
+      const opts = document.querySelectorAll('.option-input');
+      opts.forEach((o,i) => {
+        const opt = document.createElement('option'); opt.value = i; opt.text = 'Option '+(i+1);
+        select.appendChild(opt);
+      });
+    }
+
+    // ---------- Create / Update Question ----------
+    function createQuestionFromEditor(){
+      if(currentIndex === null || selectedSectionIndex === null){ alert('Select a test and section'); return false; }
+      const text = $('questionText').value.trim(); if(!text){ alert('Question text required'); return false; }
+      const opts = Array.from(document.querySelectorAll('.option-input')).map(i=>i.value.trim());
+      if(opts.length < 2){ alert('At least two options required'); return false; }
+      if(opts.some(o=>o==='')){ alert('All option fields must be filled'); return false; }
+      const correct = parseInt($('correctSelect').value);
+      const fileInput = $('imageFileInput'); let image = null;
+      if(fileInput.files[0]) { image = URL.createObjectURL(fileInput.files[0]); }
+      const q = { id: uid(), text, options: opts, correctAnswerIndex: correct, image };
+      tests[currentIndex].sections[selectedSectionIndex].questions.push(q);
+      return true;
+    }
+
+    function updateExistingQuestion(){
+      if(editingQuestionIndex === null) return false;
+      const text = $('questionText').value.trim(); if(!text){ alert('Question text required'); return false; }
+      const opts = Array.from(document.querySelectorAll('.option-input')).map(i=>i.value.trim());
+      if(opts.length < 2){ alert('At least two options required'); return false; }
+      if(opts.some(o=>o==='')){ alert('All option fields must be filled'); return false; }
+      const correct = parseInt($('correctSelect').value);
+      const fileInput = $('imageFileInput'); let image = null;
+      if(fileInput.files[0]) { image = URL.createObjectURL(fileInput.files[0]); }
+      const q = tests[currentIndex].sections[selectedSectionIndex].questions[editingQuestionIndex];
+      q.text = text; q.options = opts; q.correctAnswerIndex = correct; q.image = image;
+      return true;
+    }
+
+    function clearQuestionEditor(){
+      editingQuestionIndex = null;
+      const box = $('optionsContainer'); box.innerHTML = '';
+      addOptionRow(); addOptionRow();
+      $('questionText').value = '';
+      $('imageFileInput').value = '';
+      $('imagePreviewArea').innerHTML = '';
+      $('updateQuestionBtn').style.display = 'none';
+      $('addQuestionBtn').style.display = 'inline-block';
+      updateCorrectSelect();
+    }
+
+    // ---------- Questions overview list ----------
+    function renderQuestionsOverview(){
+      const out = $('questionsOverview'); out.innerHTML = '';
+      if(currentIndex === null || selectedSectionIndex === null) { out.innerHTML = '<div class="muted">No section selected</div>'; return; }
+      const qlist = tests[currentIndex].sections[selectedSectionIndex].questions;
+      if(qlist.length === 0) { out.innerHTML = '<div class="muted">No questions yet</div>'; return; }
+      qlist.forEach((q, qi) => {
+        const div = document.createElement('div');
+        div.style.display='flex'; div.style.gap='8px'; div.style.alignItems='center';
+        div.style.padding='10px'; div.style.border='1px solid #eef2f6'; div.style.borderRadius='8px';
+        div.innerHTML = `<div style="flex:1">
+            <div style="font-weight:700">Q${qi+1}: ${escapeHtml(q.text.slice(0,120))}${q.text.length>120?'...':''}</div>
+            <div class="muted">${q.options.length} options ${q.image? ' • has image':''}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-direction:column">
+            <button class="small-btn btn-ghost" onclick="editQuestion(event, ${qi})">Edit</button>
+            <button class="small-btn btn-danger" onclick="deleteQuestion(event, ${qi})">Delete</button>
+          </div>`;
+        out.appendChild(div);
+      });
+    }
+
+    function editQuestion(e, qi){
+      e.stopPropagation();
+      editingQuestionIndex = qi;
+      const q = tests[currentIndex].sections[selectedSectionIndex].questions[qi];
+      $('questionText').value = q.text;
+      const box = $('optionsContainer'); box.innerHTML = '';
+      q.options.forEach(opt => addOptionRow(opt));
+      updateCorrectSelect();
+      $('correctSelect').value = q.correctAnswerIndex;
+      $('imageFileInput').value = '';
+      $('imagePreviewArea').innerHTML = q.image ? `<img src="${q.image}" style="max-width:140px;max-height:100px;border-radius:8px;border:1px solid #e6e9ef;cursor:pointer" onclick="openImageModal('${q.image}')">` : '';
+      $('updateQuestionBtn').style.display='inline-block';
+      $('addQuestionBtn').style.display='none';
+      // scroll to question editor
+      $('questionEditorArea').scrollIntoView({behavior:'smooth',block:'center'});
+    }
+
+    function deleteQuestion(e, qi){
+      e.stopPropagation();
+      if(!confirm('Delete question?')) return;
+      tests[currentIndex].sections[selectedSectionIndex].questions.splice(qi,1);
+      saveTestsToLocal(); renderEditorState();
+    }
+
+    // ---------- Section rename/delete ----------
+    function renameSection(e, si){
+      e.stopPropagation();
+      const newTitle = prompt('Rename section', tests[currentIndex].sections[si].title);
+      if(newTitle===null) return;
+      tests[currentIndex].sections[si].title = newTitle.trim() || tests[currentIndex].sections[si].title;
+      saveTestsToLocal(); renderEditorState();
+    }
+    function deleteSection(e, si){
+      e.stopPropagation();
+      if(!confirm('Delete section and its questions?')) return;
+      tests[currentIndex].sections.splice(si,1);
+      if(selectedSectionIndex >= tests[currentIndex].sections.length) selectedSectionIndex = tests[currentIndex].sections.length -1;
+      saveTestsToLocal(); renderEditorState();
+    }
+
+    // ---------- Preview rendering ----------
+    function renderPreview(){
+      const test = tests[currentIndex];
+      $('previewTitle').innerText = 'Preview: ' + test.title;
+      const container = $('previewContent'); container.innerHTML = '';
+      test.sections.forEach((s, si) => {
+        const sectionEl = document.createElement('div');
+        sectionEl.innerHTML = `<h3>${escapeHtml(s.title)}</h3>`;
+        s.questions.forEach((q, qi) => {
+          const qdiv = document.createElement('div'); qdiv.className='preview-question';
+          let html = `<div style="font-weight:700;margin-bottom:6px">Q${qi+1}: ${escapeHtml(q.text)}</div>`;
+          if(q.image) html += `<img src="${q.image}" class="preview-img" onclick="openImageModal('${q.image}')">`;
+          html += '<ul>';
+          q.options.forEach((opt, oi) => {
+            const cls = (q.correctAnswerIndex === oi) ? 'correct' : '';
+            html += `<li class="${cls}">${escapeHtml(opt)}</li>`;
+          });
+          html += '</ul>';
+          qdiv.innerHTML = html;
+          sectionEl.appendChild(qdiv);
+        });
+        container.appendChild(sectionEl);
+      });
+    }
+
+    // ---------- Sync editor to model (save quick changes) ----------
+    function syncEditorToModel(){
+      if(currentIndex === null) return;
+      const test = tests[currentIndex];
+      test.title = $('testTitle').value.trim() || test.title;
+      test.duration = Number($('testDuration').value) || test.duration;
+      // title & duration changes will reflect in header/meta on next render call
+      saveTestsToLocal();
+      renderTestList(); renderEditorState();
+    }
+
+    // ---------- Utilities ----------
+    function openImageModal(url){
+      $('imageModalImg').src = url;
+      $('imageModal').style.display = 'flex';
+    }
+    function closeImageModal(){
+      $('imageModal').style.display = 'none';
+      $('imageModalImg').src = '';
+    }
+
+    // escape helpers to avoid XSS in editable contexts
+    function escapeHtml(str){
+      if(!str) return '';
+      return String(str).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]; });
+    }
+    function escapeHtmlAttr(str){
+      if(!str) return '';
+      return String(str).replace(/["']/g, function(m){ return ({'"':'&quot;',"'":'&#39;'})[m]; });
+    }
+
+    // ---------- Initial load ----------
+    init();
+
+    // Accessibility: autosync title/duration when changed
+    document.addEventListener('input', (e) => {
+      if(e.target && (e.target.id==='testTitle' || e.target.id==='testDuration')) {
+        // live update model value
+        if(currentIndex !== null) {
+          if(e.target.id==='testTitle') tests[currentIndex].title = e.target.value;
+          if(e.target.id==='testDuration') tests[currentIndex].duration = Number(e.target.value) || tests[currentIndex].duration;
+          saveTestsToLocal();
+          renderTestList();
+          $('editingMeta').innerText = `sections: ${tests[currentIndex].sections.length} | duration: ${tests[currentIndex].duration}s`;
+        }
+      }
+    });
+
+  </script>
+</body>
+</html>
