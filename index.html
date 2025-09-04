@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic Test Platform</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <style>
+    body { margin: 0; font-family: 'Inter', sans-serif; background: #f0f0f0; }
+    .btn { background:black; color:white; padding:10px 20px; border:none; border-radius:6px; cursor:pointer; font-weight:bold; margin:5px;}
+    .btn:hover { background:#333; }
+    .container { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // Lazy load components from GitHub (replace with your raw github links)
+    const AdminTestMaker = React.lazy(() => import('https://raw.githubusercontent.com/<your-username>/<repo>/main/src/admin/AdminTestMaker.jsx'));
+    const UserTestRunner = React.lazy(() => import('https://raw.githubusercontent.com/<your-username>/<repo>/main/src/user/UserTestRunner.jsx'));
+
+    function App() {
+      const [page, setPage] = useState("home"); // "home", "admin", "user"
+
+      if(page === "admin") return <React.Suspense fallback={<div>Loading Admin Panel...</div>}><AdminTestMaker /></React.Suspense>;
+      if(page === "user") return <React.Suspense fallback={<div>Loading User Page...</div>}><UserTestRunner /></React.Suspense>;
+
+      return (
+        <div className="container">
+          <h1 style={{fontSize:"2rem", marginBottom:"20px"}}>Dynamic Test Platform</h1>
+          <div>
+            <button className="btn" onClick={()=>setPage("admin")}>Admin Test Maker</button>
+            <button className="btn" onClick={()=>setPage("user")}>User Test Runner</button>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
