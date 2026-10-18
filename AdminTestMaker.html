@@ -79,7 +79,16 @@
     }
   </style>
 </head>
-<body>
+<body><div id="adminGate" style="position:fixed;inset:0;background:linear-gradient(135deg,#171238,#5b3df5);display:flex;align-items:center;justify-content:center;z-index:9999;font-family:Inter,Segoe UI,Arial">
+  <form id="adminLogin" style="width:min(420px,92vw);background:#fff;border-radius:18px;padding:30px;box-shadow:0 20px 60px #0005">
+    <h1 style="margin:0 0 8px;color:#171238">Admin Login</h1><p style="color:#687386">Test Engine administration</p>
+    <label style="display:block;margin:18px 0 6px;font-weight:700">Admin ID</label><input id="adminId" autocomplete="username" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:9px;box-sizing:border-box" required>
+    <label style="display:block;margin:14px 0 6px;font-weight:700">Password</label><input id="adminPassword" type="password" autocomplete="current-password" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:9px;box-sizing:border-box" required>
+    <button style="width:100%;margin-top:20px;padding:13px;border:0;border-radius:9px;background:#5b3df5;color:#fff;font-weight:800;cursor:pointer">Login</button>
+    <div id="adminError" style="display:none;color:#dc2626;margin-top:12px;font-size:14px">Invalid admin credentials.</div>
+    <p style="font-size:12px;color:#8a93a3;margin-top:18px">Temporary development login. Replace with Supabase Auth before production.</p>
+  </form>
+</div>
   <div class="container">
     <!-- LEFT PANEL: Test list + creation -->
     <div class="panel left" id="leftPanel">
@@ -752,5 +761,17 @@ function updateExistingQuestion(){
     });
 
   </script>
-</body>
+<script>
+(function(){
+  const gate=document.getElementById('adminGate'), form=document.getElementById('adminLogin'), error=document.getElementById('adminError');
+  if(sessionStorage.getItem('testengine_admin')==='1') gate.style.display='none';
+  form.addEventListener('submit',function(e){
+    e.preventDefault();
+    const id=document.getElementById('adminId').value.trim();
+    const pw=document.getElementById('adminPassword').value;
+    if(id==='Admin@123' && pw==='12345'){sessionStorage.setItem('testengine_admin','1');gate.style.display='none';}
+    else {error.style.display='block';}
+  });
+})();
+</script></body>
 </html>
