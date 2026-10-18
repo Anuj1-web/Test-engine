@@ -1,60 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Test Portal</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f7fb;
-      margin: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .container {
-      background: #fff;
-      padding: 40px;
-      border-radius: 16px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-    h1 {
-      margin-bottom: 24px;
-      color: #111827;
-    }
-    .btn {
-      display: block;
-      width: 220px;
-      margin: 12px auto;
-      padding: 14px;
-      background: #111827;
-      color: #fff;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      font-size: 16px;
-      transition: 0.2s;
-      text-decoration: none;
-    }
-    .btn:hover {
-      background: #1f2937;
-    }
-    .small-text {
-      margin-top: 16px;
-      font-size: 14px;
-      color: #6b7280;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Welcome to Test Portal</h1>
-    <a href="AdminTestMaker.html" class="btn">Admin — Create / Edit Tests</a>
-    <a href="UserTestRunner.html" class="btn">User — Take Tests</a>
-    <p class="small-text">Both apps share the same browser localStorage. Tests saved in Admin will appear in User Runner.</p>
-  </div>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ExamPrep — Smart Test Engine</title><link rel="stylesheet" href="styles.css"></head><body>
+<header class="topbar"><div class="brand">ExamPrep</div><nav><button onclick="home()">Home</button><button onclick="scrollToSeries()">Test Series</button><button onclick="dash()">My Performance</button></nav><div class="actions"><button class="btn light" onclick="alert('Study material module coming next.')">Study Material</button><button class="btn primary" onclick="scrollToSeries()">Start Practising</button></div></header>
+<section id="homeView"><section class="hero"><div class="heroInner"><div><b>SMART GOVERNMENT-EXAM PREPARATION</b><h1>Practice smarter.<br>Perform better.</h1><p>Mock tests, chapter-wise practice and performance tracking in one focused test platform.</p><div class="search"><input id="search" placeholder="Search SSC CGL, reasoning, banking, railway..." oninput="renderTests()"><button class="btn primary" onclick="renderTests()">Search</button></div></div><div class="heroStats"><div>Mock tests <strong>50K+</strong></div><div>Practice papers <strong>30K+</strong></div><div>Performance tracking <strong>24×7</strong></div></div></div></section>
+<section class="wrap"><h2>Prepare for your exam</h2><div id="categories" class="grid"></div></section><section id="series" class="wrap"><h2>Popular test series</h2><div class="tabs"><button onclick="filterTests('')">All</button><button onclick="filterTests('SSC')">SSC</button><button onclick="filterTests('Reasoning')">Reasoning</button><button onclick="filterTests('Banking')">Banking</button></div><div id="tests" class="grid"></div></section>
+<section class="wrap"><h2>Built for serious practice</h2><div class="grid"><div class="card"><b>Real test experience</b><p>Timer, question palette, mark for review, clear response and submit.</p></div><div class="card"><b>Performance analytics</b><p>Score, accuracy, correct/wrong/skipped and attempt history.</p></div><div class="card"><b>Fast discovery</b><p>Search and filter tests by exam and practice category.</p></div><div class="card"><b>Future-ready</b><p>Structured for cloud accounts, question banks and weak-topic analytics.</p></div></div></section></section>
+<section id="dashboard" class="view wrap"><button class="btn outline" onclick="home()">← Home</button><h2>My Performance</h2><div id="kpis" class="grid"></div><div class="card"><table><thead><tr><th>Test</th><th>Score</th><th>Accuracy</th><th>Correct</th></tr></thead><tbody id="history"></tbody></table></div></section>
+<section id="runner" class="view"><div class="runnerTop"><button class="btn outline" onclick="home()">Exit</button><h3 id="runTitle"></h3><span id="runCount"></span><strong id="timer">00:00</strong></div><div class="runnerGrid"><aside class="palette card"><b>Question palette</b><div id="palette"></div></aside><main class="question card"><small id="qMeta"></small><h2 id="qText"></h2><div id="options"></div><div class="controls"><button class="btn outline" onclick="prevQ()">Previous</button><button class="btn primary" onclick="nextQ()">Save & Next</button><button class="btn light" onclick="markReview()">Mark for review</button><button class="btn outline" onclick="clearAns()">Clear</button><button class="btn primary" onclick="submitTest()">Submit test</button></div></main><aside class="card"><b>Instructions</b><p>Choose one answer. Wrong answers use the configured negative marking. Revisit questions before submitting.</p><hr><p>This build stores practice history locally. Supabase can be connected for production accounts and cloud data.</p></aside></div></section>
+<section id="result" class="view wrap"><button class="btn outline" onclick="home()">← Home</button><h2>Test Result</h2><div class="grid"><div class="card"><strong id="score" class="big"></strong><p>Score</p></div><div class="card"><strong id="acc" class="big"></strong><p>Accuracy</p></div><div class="card"><strong id="attempted" class="big"></strong><p>Attempted</p></div></div><div class="card"><p><b id="cw"></b></p><table><thead><tr><th>#</th><th>Question</th><th>Your answer</th><th>Correct</th><th>Status</th></tr></thead><tbody id="answersTable"></tbody></table><button class="btn primary" onclick="start(current.id)">Reattempt</button></div></section>
+<script src="app.js"></script></body></html>
